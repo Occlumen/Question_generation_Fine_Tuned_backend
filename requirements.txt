@@ -1,0 +1,10 @@
+flask
+flask-cors
+pypdf
+langchain-community
+langchain    
+langchain-huggingface
+faiss-cpu
+langchain-chroma
+langchain_openai
+chromadb
