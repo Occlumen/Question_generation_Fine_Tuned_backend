@@ -69,106 +69,41 @@ def fetch_ranked_topics(data):
     return {"main_topics": main_topics}
     
 
-def fetch_ranked_questions(question_data):
-    """
-    Extracts and ranks MCQs and open-ended questions from the given input.
-    Handles JSON parsing, regex extraction, and data cleaning.
-    """
+
+def extract_mcq_questions(data):
+    """Extract MCQ questions from the data."""
+    mcq_pattern = re.compile(r'"mcq":\s*({.*?})', re.DOTALL)
+    mcq_matches = mcq_pattern.findall(data)
     mcq_questions = []
+
+    for match in mcq_matches:
+        try:
+            mcq_questions.append(json.loads(match))
+        except json.JSONDecodeError:
+            pass
+
+    return mcq_questions
+
+def extract_open_ended_questions(data):
+    """Extract open-ended questions from the data."""
+    open_ended_pattern = re.compile(r'"open_ended":\s*({.*?})', re.DOTALL)
+    open_ended_matches = open_ended_pattern.findall(data)
     open_ended_questions = []
 
-    if isinstance(question_data, dict):
-        # Extract questions directly if input is a dictionary
-        mcq_questions = validate_questions(question_data.get("questions", []))
-        open_ended_questions = validate_questions(question_data.get("open_ended", []))
-    elif isinstance(question_data, str):
+    for match in open_ended_matches:
         try:
-            # Attempt to parse the input string as JSON
-            cleaned_data = clean_json(question_data)
-            data = json.loads(cleaned_data)
-            mcq_questions = validate_questions(data.get("questions", []))
-            open_ended_questions = validate_questions(data.get("open_ended", []))
+            open_ended_questions.append(json.loads(match))
         except json.JSONDecodeError:
-            # Fallback to regex-based extraction for malformed JSON or raw text
-            mcq_questions = validate_questions(extract_questions_with_regex(question_data, "questions"))
-            open_ended_questions = validate_questions(extract_questions_with_regex(question_data, "open_ended"))
+            pass
 
-    # Log if no questions were found
-    if not mcq_questions and not open_ended_questions:
-        print("Warning: No questions were extracted. Verify input format.")
+    return open_ended_questions
 
-    # Rank and return sorted questions
+def fetch_ranked_questions(questions):
+    """Fetch MCQ and open-ended questions."""
     return {
-        "mcq": sort_questions(mcq_questions),
-        "open_ended": sort_questions(open_ended_questions)
+        "mcq": extract_mcq_questions(questions),
+        "open_ended": extract_open_ended_questions(questions)
     }
-
-def extract_questions_with_regex(data_str, question_type):
-    """
-    Extracts questions of a specific type (e.g., "questions" or "open_ended")
-    from a text using regex.
-    """
-    pattern = rf'"{question_type}"\s*:\s*\[(.*?)\]'
-    match = re.search(pattern, data_str, re.DOTALL)
-    if match:
-        content = f"[{match.group(1)}]"
-        try:
-            return json.loads(clean_json(content))
-        except json.JSONDecodeError as e:
-            print(f"Error parsing {question_type} content with regex: {e}")
-    else:
-        print(f"No match found for {question_type} in the input string.")
-    return []
-
-def clean_json(json_string):
-    """
-    Cleans JSON-like strings by removing problematic patterns such as trailing commas,
-    inconsistent quotes, or missing brackets.
-    """
-    # Remove trailing commas before closing brackets
-    json_string = re.sub(r",\s*([\]}])", r"\1", json_string)
-    # Replace single quotes with double quotes for JSON compatibility
-    json_string = re.sub(r"(\s*)'", r'\1"', json_string)
-    # Normalize whitespace and strip leading/trailing spaces
-    return json_string.strip()
-
-def validate_questions(questions):
-    """
-    Validates that the extracted questions are in the expected list of dictionaries format.
-    Filters out invalid entries.
-    """
-    if not isinstance(questions, list):
-        print("Invalid format: Questions are not a list.")
-        return []
-    return [q for q in questions if isinstance(q, dict) and "text" in q]
-
-def sort_questions(questions):
-    """
-    Sorts questions based on the confidence_score if available.
-    """
-    if not questions:
-        return []
-    return sorted(
-        questions,
-        key=lambda q: q.get("confidence_score", 0),
-        reverse=True
-    )
-
-# Debugging utilities
-def debug_parsing_flow(input_data):
-    """
-    Debugs the parsing flow by attempting to clean, parse, and extract data.
-    """
-    print("Input Data:", input_data)
-    cleaned_data = clean_json(input_data)
-    print("Cleaned Data:", cleaned_data)
-    try:
-        parsed_data = json.loads(cleaned_data)
-        print("Parsed Data:", parsed_data)
-        return parsed_data
-    except json.JSONDecodeError as e:
-        print(f"JSONDecodeError: {e}")
-        return None
     
 
 @app.route("/question_generation", methods=['POST'])
@@ -217,7 +152,7 @@ def question_generation():
             res = vector_store.similarity_search(ques, k=1)
             question_content = " ".join(rep.page_content for rep in res)
             question_template = """
-                For the following topic {topic_content}. Generate 15 MCQs and 5 open-ended questions with answers using following content:
+                For the following topic {topic_content}. Generate 5 MCQs and 5 open-ended questions with answers using following content:
                 {question_content}
                 Format of  the response should be as follows:
                 "questions": 
@@ -237,6 +172,7 @@ def question_generation():
             question_prompt = PromptTemplate(template = question_template, input_variables = ['topic_content', 'question_content'])
             question_chain = question_prompt | llm
             question_response = question_chain.invoke({'topic_content': topic_content, 'question_content': question_content})
+            print(question_response)
             question_response_data = fetch_ranked_questions(question_response)
             question_total_respose[topic_content] = question_response_data
         
