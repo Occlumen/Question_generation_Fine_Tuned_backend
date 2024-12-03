@@ -1,22 +1,40 @@
-{
-    "Project Closure": {
-        "mcq": [],
-        "open_ended": []
-    },
-    "Project Monitoring and Control": {
-        "mcq": [],
-        "open_ended": []
-    },
-    "Project Planning": {
-        "mcq": [],
-        "open_ended": []
-    },
-    "Project Execution": {
-        "mcq": [],
-        "open_ended": []
-    },
-    "Project Initiation": {
-        "mcq": [],
-        "open_ended": []
+    "Classes of Machine Learning: Supervised and Unsupervised": {
+        "mcq": [
+            {
+                "topic": "Classes of Machine Learning",
+                "question": "Which of the following is an example of supervised learning?",
+                "options": [
+                    "A. Logistic regression",
+                    "B. Decision trees",
+                    "C. K-nearest neighbors",
+                    "D. Principal component analysis"
+                ],
+                "correct_answer": "A",
+                "explanation": "Logistic regression is a supervised learning algorithm used for classification and regression tasks."
+            },
+            {
+                "topic": "Classes of Machine Learning",
+                "question": "Which of the following is an example of unsupervised learning?",
+                "options": [
+                    "A. Naive Bayes",
+                    "B. K-means clustering",
+                    "C. Linear regression",
+                    "D. Decision trees"
+                ],
+                "correct_answer": "B",
+                "explanation": "K-means clustering is an unsupervised learning algorithm used for grouping similar data points."
+            }
+        ],
+        "open_ended": [
+            {
+                "topic": "Classes of Machine Learning",
+                "question": "Explain the difference between supervised and unsupervised learning.",
+                "answer": "Supervised learning uses labeled data to learn a model, while unsupervised learning uses unlabeled data to identify patterns and structures."
+            },
+            {
+                "topic": "Classes of Machine Learning",
+                "question": "Explain the importance of unsupervised learning in data analysis.",
+                "answer": "Unsupervised learning helps discover hidden patterns, relationships, and structures in data, providing valuable insights for further analysis."
+            }
+        ]
     }
-}
