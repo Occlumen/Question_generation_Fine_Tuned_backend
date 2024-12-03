@@ -1,3 +1,16 @@
+{
+    "Supervised Learning: Logistic Regression vs Support Vector Machines": {
+        "mcq": [],
+        "open_ended": []
+    },
+    "Importance of Machine Learning for Statistical Agencies": {
+        "mcq": [],
+        "open_ended": []
+    },
+    "What is Machine Learning?": {
+        "mcq": [],
+        "open_ended": []
+    },
     "Classes of Machine Learning: Supervised and Unsupervised": {
         "mcq": [
             {
@@ -37,4 +50,9 @@
                 "answer": "Unsupervised learning helps discover hidden patterns, relationships, and structures in data, providing valuable insights for further analysis."
             }
         ]
+    },
+    "Machine Learning Applications in Official Statistics": {
+        "mcq": [],
+        "open_ended": []
     }
+}
