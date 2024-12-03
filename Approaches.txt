@@ -1,0 +1,39 @@
+Tools & Frameworks
+* Language Model: Mistral 7B Instruct is an excellent choice for its balance of performance and resource efficiency. It delivers robust natural language capabilities while running on consumer-grade hardware, making it cost-effective for diverse applications.
+* Retrieval-Augmented Generation (RAG): Using LangChain for pipeline management and ChromaDB for vector storage creates a powerful framework for building AI applications. LangChain streamlines workflow orchestration, enabling seamless integration of LLMs, tools, and data sources, while ChromaDB provides efficient, scalable vector storage with fast similarity search and metadata filtering. Together, they enable robust Retrieval-Augmented Generation (RAG) systems and advanced NLP solutions.
+* Vector Database: Chroma is an excellent choice for vector storage and retrieval due to its high scalability, fast similarity search using HNSW indexing, and seamless integration with popular AI frameworks like OpenAI and Hugging Face.
+Assumptions
+Input Format: Assumed that the PDF files provided as input maintain a consistent structure and formatting.
+
+Approach
+* PDF Text Extraction: PyPDFLoader supports multi-page documents, ensuring that the content is correctly retrieved and structured.
+* Topic Extraction: Similarity search is an effective technique for topic extraction as it identifies and retrieves semantically similar data points based on their embeddings. 
+* Question Generation: LLMChain sequentially links inputs, such as source text or topics, with specific instructions to the LLM, guiding it to generate insightful and context-aligned questions. Mistral enhances the quality of generated questions by leveraging its superior contextual awareness, fine-grained comprehension, and ability to handle complex linguistic structures.
+
+
+
+* RAG Implementation: 
+LangChain is a powerful framework designed for building language model-driven applications, including those utilizing Retrieval-Augmented Generation (RAG). RAG combines information retrieval techniques with large language models (LLMs) to answer complex queries by grounding responses in external data sources. 
+* Chunking Strategy: 
+The RecursiveCharacterTextSplitter is a key utility in LangChain designed to divide large documents into smaller, manageable text chunks for downstream tasks like embedding generation and retrieval. This is especially useful in Retrieval-Augmented Generation (RAG) workflows where breaking documents into semantically meaningful chunks ensures better performance during similarity searches and improves the quality of generated responses. 
+* Embedding Generation: 
+The HuggingFaceEmbeddings utility in LangChain allows seamless integration of Hugging Face models for generating text embeddings. By specifying model_name="sentence-transformers/all-MiniLM-L12-v2", users can leverage a lightweight and efficient embedding model from the Sentence Transformers library. 
+
+Challenges & Solutions
+Challenge: Topic Boundary Detection
+* Details: Difficulty in identifying the exact start and end of topics within dense chapters.
+* Solution: Leveraged an NLP model trained on hierarchical segmentation to improve topic boundary detection accuracy.
+Challenge: Large Embedding Sizes
+* Details: Encountered issues with memory constraints due to large embeddings for long documents.
+* Solution: Optimized chunk sizes and used dimensionality reduction technique
+
+
+
+Design Decisions
+1. Choice of LangChain for RAG: 
+o Selected LangChain for its modular and scalable architecture, which simplifies integration with vector databases and LLMs.
+2. Vector Database Selection: 
+o Chose Chroma for advanced indexing techniques to enable fast and accurate retrieval of embeddings, making it ideal for use cases such as natural language processing.
+3. Question Generation Prompt Design: 
+o Created a prompt template emphasizing relevance and clarity to balance question difficulty and ensure coherence.
+
