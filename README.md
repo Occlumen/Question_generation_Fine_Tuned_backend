@@ -33,8 +33,8 @@ pip install virtualenv
 
 Clone your Flask application repository to your local machine. If you're using GitHub:
 
-git clone https://github.com/yourusername/your-repository-name.git
-cd your-repository-name
+git clone https://github.com/Occlumen/Question_generation_Fine_Tuned_backend.git
+cd Question_generation_Fine_Tuned_backend
 
 ---
 
