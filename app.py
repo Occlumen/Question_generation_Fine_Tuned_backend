@@ -108,85 +108,92 @@ def fetch_ranked_questions(questions):
 
 @app.route("/question_generation", methods=['POST'])
 def question_generation(): 
-    file = request.files['file'] 
-    if file.content_type == 'application/pdf':
-        temp_path = os.path.join("temp", file.filename)  # Ensure 'temp' directory exists
-        print(temp_path)
-        file.save(temp_path)
-        vector_store = craete_vector_store(temp_path)
-        # Path to the directory containing your .gguf model
-        # Use a LLaMA model
-        repo_id="mistralai/Mistral-7B-Instruct-v0.2"
-        llm=HuggingFaceEndpoint(repo_id=repo_id,max_length=128,temperature=0.2,token=hf_token)
-        question = "Give me important and crucial main topics to fully and properly understand "+ str(file.filename)
-        print("similarity_search")
-        results = vector_store.similarity_search(question, k=5)
-        print("similarity_search done")
-        content = " ".join(result.page_content for result in results)
-        template = """
-        Generate five Most important topics or concepts from the data given below :
-        {content}
-        The output shoul be in json format like the example below:
-            "book_title": "Project Management Professional Guide",
-            "total_topics": 5,
-            "extraction_timestamp": "2024-11-25T10:00:00Z",
-            "main_topics": [
-                "Project Initiation",
-                "Project Planning",
-                "Project Execution",
-                "Project Monitoring and Control",
-                "Project Closure"
-            ]
-        """
-        prompt = PromptTemplate(template = template, input_variables = ['content'])
-        topic_chain = prompt | llm
-        print("Invoke")
-        topics = topic_chain.invoke({"content": content})
-        topics_dict = fetch_ranked_topics(topics)
-        # Access the 'main_topics' field
-        main_topics = topics_dict.get("main_topics")
-        question_total_respose = {}
-        for topic in main_topics:
-            topic_content = topic
-            ques = "Give me all the important , crucial , valuable and study worthy text about "+ topic
-            res = vector_store.similarity_search(ques, k=1)
-            question_content = " ".join(rep.page_content for rep in res)
-            question_template = """
-                For the following topic {topic_content}. Generate 5 MCQs and 5 open-ended questions with answers using following content:
-                {question_content}
-                Format of  the response should be as follows:
-                "questions": 
-                    "mcq": [
-                            "topic": "Project Initiation",
-                            "question": "What is the primary purpose of a project charter?",
-                            "options": ["A. Define schedule", "B. Authorize project", "C. Allocate budget", "D. Identify risks"],
-                            "correct_answer": "B",
-                            "explanation": "A project charter formally authorizes the project."
-                    ],
-                    "open_ended": [
-                            "topic": "Project Initiation",
-                            "question": "Explain the role of a project charter in project success.",
-                            "answer": "The project charter establishes scope, objectives, and authority, ensuring project alignment and support."
-                    ]
+    try:
+        file = request.files['file'] 
+        if file.content_type == 'application/pdf':
+            temp_path = os.path.join("temp", file.filename)  # Ensure 'temp' directory exists
+            print(temp_path)
+            file.save(temp_path)
+            vector_store = craete_vector_store(temp_path)
+            # Path to the directory containing your .gguf model
+            # Use a LLaMA model
+            repo_id="mistralai/Mistral-7B-Instruct-v0.2"
+            llm=HuggingFaceEndpoint(repo_id=repo_id,max_length=128,temperature=0.2,token=hf_token)
+            question = "Give me important and crucial main topics to fully and properly understand "+ str(file.filename)
+            print("similarity_search")
+            results = vector_store.similarity_search(question, k=5)
+            print("similarity_search done")
+            content = " ".join(result.page_content for result in results)
+            template = """
+            Generate five Most important topics or concepts from the data given below :
+            {content}
+            The output shoul be in json format like the example below:
+                "book_title": "Project Management Professional Guide",
+                "total_topics": 5,
+                "extraction_timestamp": "2024-11-25T10:00:00Z",
+                "main_topics": [
+                    "Project Initiation",
+                    "Project Planning",
+                    "Project Execution",
+                    "Project Monitoring and Control",
+                    "Project Closure"
+                ]
             """
-            question_prompt = PromptTemplate(template = question_template, input_variables = ['topic_content', 'question_content'])
-            question_chain = question_prompt | llm
-            question_response = question_chain.invoke({'topic_content': topic_content, 'question_content': question_content})
-            print(question_response)
-            question_response_data = fetch_ranked_questions(question_response)
-            question_total_respose[topic_content] = question_response_data
-        
-        print(question_total_respose)
-        #topic_data = json.loads(topics)
-        update_json(topics_dict, question_total_respose)
-        os.remove(temp_path)
-        return jsonify({"message": "Question Generation is running", "topic_json": topics_dict, "question_json": question_total_respose}), 200
-    else:
-        return jsonify({"message": "File is not PDF"}), 200
+            prompt = PromptTemplate(template = template, input_variables = ['content'])
+            topic_chain = prompt | llm
+            print("Invoke")
+            topics = topic_chain.invoke({"content": content})
+            topics_dict = fetch_ranked_topics(topics)
+            # Access the 'main_topics' field
+            main_topics = topics_dict.get("main_topics")
+            question_total_respose = {}
+            for topic in main_topics:
+                topic_content = topic
+                ques = "Give me all the important , crucial , valuable and study worthy text about "+ topic
+                res = vector_store.similarity_search(ques, k=1)
+                question_content = " ".join(rep.page_content for rep in res)
+                question_template = """
+                    For the following topic {topic_content}. Generate 5 MCQs and 5 open-ended questions with answers using following content:
+                    {question_content}
+                    Format of  the response should be as follows:
+                    "questions": 
+                        "mcq": [
+                                "topic": "Project Initiation",
+                                "question": "What is the primary purpose of a project charter?",
+                                "options": ["A. Define schedule", "B. Authorize project", "C. Allocate budget", "D. Identify risks"],
+                                "correct_answer": "B",
+                                "explanation": "A project charter formally authorizes the project."
+                        ],
+                        "open_ended": [
+                                "topic": "Project Initiation",
+                                "question": "Explain the role of a project charter in project success.",
+                                "answer": "The project charter establishes scope, objectives, and authority, ensuring project alignment and support."
+                        ]
+                """
+                question_prompt = PromptTemplate(template = question_template, input_variables = ['topic_content', 'question_content'])
+                question_chain = question_prompt | llm
+                question_response = question_chain.invoke({'topic_content': topic_content, 'question_content': question_content})
+                print(question_response)
+                question_response_data = fetch_ranked_questions(question_response)
+                question_total_respose[topic_content] = question_response_data
+            
+            print(question_total_respose)
+            #topic_data = json.loads(topics)
+            update_json(topics_dict, question_total_respose)
+            os.remove(temp_path)
+            return jsonify({"message": "Question Generation is running", "topic_json": topics_dict, "question_json": question_total_respose}), 200
+        else:
+            return jsonify({"message": "File is not PDF"}), 200
+    except Exception as e:
+        print(e)
+        return jsonify({"message": "Question Generation is not running", "topic_json": {"Nothing returned ": "Nothing to display"}, "question_json": {"Nothing returned ": "Nothing to display"}}), 200    
 
 @app.route("/", methods=['GET'])
 def health_check():
     return jsonify({"message": "API is running"}), 200
+
+if __name__ == '__main__':
+    app.run(debug=True)
 
 if __name__ == '__main__':
     app.run(debug=True)
