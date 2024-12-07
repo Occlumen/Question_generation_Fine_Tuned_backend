@@ -69,41 +69,25 @@ def fetch_ranked_topics(data):
     return {"main_topics": main_topics}
     
 
+def extract_questions_data(text):
+    """
+    Extracts JSON-like data starting from 'questions:' in the provided text.
 
-def extract_mcq_questions(data):
-    """Extract MCQ questions from the data."""
-    mcq_pattern = re.compile(r'"mcq":\s*({.*?})', re.DOTALL)
-    mcq_matches = mcq_pattern.findall(data)
-    mcq_questions = []
+    Args:
+    text (str): The input text containing JSON-like content.
 
-    for match in mcq_matches:
-        try:
-            mcq_questions.append(json.loads(match))
-        except json.JSONDecodeError:
-            pass
-
-    return mcq_questions
-
-def extract_open_ended_questions(data):
-    """Extract open-ended questions from the data."""
-    open_ended_pattern = re.compile(r'"open_ended":\s*({.*?})', re.DOTALL)
-    open_ended_matches = open_ended_pattern.findall(data)
-    open_ended_questions = []
-
-    for match in open_ended_matches:
-        try:
-            open_ended_questions.append(json.loads(match))
-        except json.JSONDecodeError:
-            pass
-
-    return open_ended_questions
-
-def fetch_ranked_questions(questions):
-    """Fetch MCQ and open-ended questions."""
-    return {
-        "mcq": extract_mcq_questions(questions),
-        "open_ended": extract_open_ended_questions(questions)
-    }
+    Returns:
+    str: Extracted JSON-like data starting from 'questions:', or a message indicating no match found.
+    """
+    # Regex pattern to match everything after "questions":
+    pattern = re.compile(r"\"questions\":\s*{.*", re.DOTALL)
+    match = pattern.search(text)
+    
+    if match:
+        # Extract and return the matched data
+        return match.group(0).strip()
+    else:
+        return "No questions data found."
     
 
 @app.route("/question_generation", methods=['POST'])
@@ -115,16 +99,61 @@ def question_generation():
             print(temp_path)
             file.save(temp_path)
             vector_store = craete_vector_store(temp_path)
+            print("Vector Store Created")
             # Path to the directory containing your .gguf model
             # Use a LLaMA model
             repo_id="mistralai/Mistral-7B-Instruct-v0.2"
             llm=HuggingFaceEndpoint(repo_id=repo_id,max_length=128,temperature=0.2,token=hf_token)
             question = "Give me important and crucial main topics to fully and properly understand "+ str(file.filename)
             print("similarity_search")
-            results = vector_store.similarity_search(question, k=5)
+            results = vector_store.similarity_search(question, k=2)
             print("similarity_search done")
             content = " ".join(result.page_content for result in results)
+            topic_examples = """
+            The output should be foloowing the below format:
+            Example 1 (JSON):
+            {
+            "main_topics": [
+                    "Project Initiation",
+                    "Project Planning",
+                    "Project Execution",
+                    "Project Monitoring and Control",
+                    "Project Closure"
+                ]
+                }
+            Example 2 (JSON):
+            {
+            "main_topics": [
+                    "Journalism ethics",
+                    "Investigative journalism",
+                    "Online journalism",
+                    "Local journalism",
+                    "Citizen journalism"
+                ]
+                }
+            Example 3 (JSON):
+            {
+            "main_topics": [
+                    "Social engineering",
+                    "Data privacy",
+                    "Internet of things (IoT)",
+                    "Network security",
+                    "Password management"
+                ]
+                }
+            Example 4 (JSON):
+            {
+            "main_topics": [
+                    "Data visualization",
+                    "Machine learning",
+                    "Deep learning",
+                    "Natural language processing (NLP)",
+                    "Data mining"
+                ]
+                }
+            """
             template = """
+            You are greater reader and can understand and comprehend anything. Read the context below to get a better understanding and
             Generate five Most important topics or concepts from the data given below :
             {content}
             The output shoul be in json format like the example below:
@@ -138,11 +167,14 @@ def question_generation():
                     "Project Monitoring and Control",
                     "Project Closure"
                 ]
+            Following are the examples you can refer to:
+            {topic_examples}
             """
             prompt = PromptTemplate(template = template, input_variables = ['content'])
             topic_chain = prompt | llm
             print("Invoke")
-            topics = topic_chain.invoke({"content": content})
+            topics = topic_chain.invoke({"content": content, "topic_examples": topic_examples})
+            print("Topics Generated")
             topics_dict = fetch_ranked_topics(topics)
             # Access the 'main_topics' field
             main_topics = topics_dict.get("main_topics")
@@ -152,32 +184,116 @@ def question_generation():
                 ques = "Give me all the important , crucial , valuable and study worthy text about "+ topic
                 res = vector_store.similarity_search(ques, k=1)
                 question_content = " ".join(rep.page_content for rep in res)
-                question_template = """
-                    For the following topic {topic_content}. Generate 5 MCQs and 5 open-ended questions with answers using following content:
-                    {question_content}
-                    Format of  the response should be as follows:
-                    "questions": 
+                question_examples = """
+                    The output should be following the below format:
+                    Example 1 (JSON):
+                    "questions": {
                         "mcq": [
-                                "topic": "Project Initiation",
-                                "question": "What is the primary purpose of a project charter?",
-                                "options": ["A. Define schedule", "B. Authorize project", "C. Allocate budget", "D. Identify risks"],
-                                "correct_answer": "B",
-                                "explanation": "A project charter formally authorizes the project."
+                            {
+                                "topic": "Cell Biology",
+                                "type": "MCQ",
+                                "question": "In which of the following type of cells the cell junction is abundant?",
+                                "options": [
+                                    "A) Cardiac cells",
+                                    "B) Prokaryotic cells",
+                                    "C) Hepatic cells",
+                                    "D) Epithelial cells"
+                                ],
+                                "correct_answer": "D",
+                                "explanation": "The cell junction is abundant in epithelial cells, which provide barrier and control over the transport in the cell. It is otherwise known as intercellular bridge, which is made up of multiprotein complexes."
+                            }
                         ],
                         "open_ended": [
-                                "topic": "Project Initiation",
-                                "question": "Explain the role of a project charter in project success.",
-                                "answer": "The project charter establishes scope, objectives, and authority, ensuring project alignment and support."
+                            {
+                                "topic": "Cell Biology",
+                                "type": "open_ended",
+                                "question": "What do you mean by plasmids? What role do they play in bacteria ?",
+                                "model_answer": "A plasmid is an autonomously replicating, extra-chromosomal ....  remain separate from the chromosome.",
+                                "key_points": [
+                                    "double-stranded DNA",
+                                    "recombination experiments",
+                                    "bacterial conjugation"
+                                ]
+                            }
                         ]
+                    }
+                    Example 2 (JSON):
+                    "questions": {
+                        "mcq": [
+                            {
+                                "topic": "Data Structure",
+                                "type": "MCQ",
+                                "question": "What are the disadvantages of arrays",
+                                "options": [
+                                    "A) Index value of an array can be negative",
+                                    "B) Elements are sequentially accessed",
+                                    "C) Data structure like queue or stack cannot be implemented",
+                                    "D) There are chances of wastage of memory space if elements inserted in an array are lesser than the allocated size"
+                                ],
+                                "correct_answer": "D",
+                                "explanation": "Arrays are of fixed size. If we insert elements less than the allocated size, unoccupied positions can’t be used again. Wastage will occur in memory."
+                            }
+                        ],
+                        "open_ended": [
+                            {
+                                "topic": "Data Structure",
+                                "type": "open_ended",
+                                "question": "What is a linked list Data Structure ?",
+                                "model_answer": "This is one of the most frequently asked data structure interview questions where the ...... and the list has the ability to grow and shrink on demand.",
+                                "key_points": [
+                                    "dynamic data structure",
+                                    "djacent memory locations",
+                                    "pointers to form a chain"
+                                ]
+                            }
+                        ]
+                    }
+                    Example 3 (JSON):
+                    "questions": {
+                        "mcq": [
+                            {
+                                "topic": "Economics",
+                                "type": "MCQ",
+                                "question": "Which of the following is the relation that the law of demand defines?",
+                                "options": [
+                                    "A) Income and price of a commodity",
+                                    "B) Price and quantity of a commodity",
+                                    "C) Income and quantity demanded",
+                                    "D) Quantity demanded and quantity supplied"
+                                ],
+                                "correct_answer": "B",
+                                "explanation": "..."
+                            }
+                        ],
+                        "open_ended": [
+                            {
+                                "topic": "Economics",
+                                "type": "open_ended",
+                                "question": "Outline the difference between positive and normative questions?",
+                                "model_answer": "Positive economics focuses on the description, quantification, and explanation of economic developments, expectations, and associated phenomena. It relies on objective data analysis, fact-based (precise, descriptive and clearly  ..... provide basic healthcare to all citizens." ",
+                                "key_points": [
+                                    "Positive economics",
+                                    " cause-and-effect relationships",
+                                    "authoritarian)"
+                                ]
+                            }
+                        ]
+                    }
+                    """
+                question_template = """
+                    You are a skillful interviewer, and have vast knowledge on wide topics.You are generate question in json format. The question will have both multiple choice question and open ended questions.
+                    Generate 3 MCQs and 3 open-ended questions with answers for the topic : {topic_content} similar to below format:
+                    {question_examples}
+                    Refer the following context to form better answer :
+                   {question_content}
                 """
                 question_prompt = PromptTemplate(template = question_template, input_variables = ['topic_content', 'question_content'])
                 question_chain = question_prompt | llm
-                question_response = question_chain.invoke({'topic_content': topic_content, 'question_content': question_content})
-                print(question_response)
-                question_response_data = fetch_ranked_questions(question_response)
-                question_total_respose[topic_content] = question_response_data
+                question_response = question_chain.invoke({'topic_content': topic_content, 'question_content': question_content,'question_examples': question_examples})
+                #question_response_data = extract_questions_data(question_response)
+                print("Questions Generated for ", topic_content)
+                question_total_respose[topic_content] = question_response
             
-            print(question_total_respose)
             #topic_data = json.loads(topics)
             update_json(topics_dict, question_total_respose)
             os.remove(temp_path)
